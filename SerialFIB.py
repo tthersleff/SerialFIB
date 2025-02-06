@@ -20,7 +20,7 @@
 #                   DOI:                                       #
 #                                                              #
 #                                                              #
-#          SerialFIB: A Developer’s Tool for Automated         #
+#          SerialFIB: A Developer's Tool for Automated         #
 #                 cryo-FIB Customized Workflows                #
 #                                                              #
 #     with bug reports, suggestions, etc. please contact:      #
@@ -43,8 +43,10 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 #### IMPORT AUTOSCRIPT STRUCTURES
 try:
     from autoscript_sdb_microscope_client.structures import *
-except:
-    print("No Autoscript installed")
+except ImportError as e:
+    print(f"Import error: {e}")
+except Exception as e:
+    print(f"Other error: {e}")
 
 ### IMPROT DRIVERS AND TOOLS
 from src.AquilosDriver import fibsem
