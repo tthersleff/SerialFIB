@@ -16,17 +16,12 @@ import shutil
 
 from time import sleep
 from typing import List, Pattern, Tuple
-try:
-    from read_probe_table import *
-except:
-    from src.Zeiss.read_probe_table import *
+
 import numpy as np
 #from SEM_API import SEM_API
-try:
-    from src.Zeiss.SEM_API import SEM_API
-except ModuleNotFoundError:
-    from SEM_API import SEM_API
+
 import math
+from tescanautomation import Automation
 
 #global probe_table_path
 
@@ -148,7 +143,7 @@ class Scanning():
 
 # TODO:
 class BeamShift():
-    def __init__(self, sem: SEM_API) -> None:
+    def __init__(self, sem) -> None:
         self._value = Point(0, 0)
         self._sem = sem
 
@@ -163,21 +158,21 @@ class BeamShift():
 
         if beam=='ION':
             if self._sem is not None:
-                self._sem.SetValue("AP_FIB_BEAM_SHIFT_X", value.x)
-                self._sem.SetValue("AP_FIB_BEAM_SHIFT_Y", value.y)
+                #self._sem.SetValue("AP_FIB_BEAM_SHIFT_X", value.x)
+                #self._sem.SetValue("AP_FIB_BEAM_SHIFT_Y", value.y)
                 print(f"Setting beamshift x to {value.x} and y to {value.y}")
 
         else:
             if self._sem is not None:
-                self._sem.SetValue("AP_BEAMSHIFT_X", value.x)
-                self._sem.SetValue("AP_BEAMSHIFT_Y", value.y)
+                #self._sem.SetValue("AP_BEAMSHIFT_X", value.x)
+                #self._sem.SetValue("AP_BEAMSHIFT_Y", value.y)
                 print(f"Setting beamshift x to {value.x} and y to {value.y}")
         self._value = value
 
 
 # TODO:
 class BeamCurrent():
-    def __init__(self, sem: SEM_API) -> None:
+    def __init__(self, sem) -> None:
         self._source = "Ion"
         self._value = 0.0e-9
         self._sem = sem
@@ -204,16 +199,17 @@ class BeamCurrent():
         # print(getProbe(value, self.probe_table))
         # probeDict=getProbe(value, self.probe_table)
         # print(probeDict['name'])
-        if self._sem is not None:
-            if self._source == "Ion": 
-                probeDict=getProbe(value, self.probe_table)
+        #if self._sem is not None:
+            #if self._source == "Ion": 
+            #    probeDict=getProbe(value, self.probe_table)
             
-                self._sem.SetState("DP_FIB_IMAGE_PROBE", probeDict['name'])
-            else: self._sem.SetValue("AP_IPROBE", value)
+                #self._sem.SetState("DP_FIB_IMAGE_PROBE", probeDict['name'])
+            #else: self._sem.SetValue("AP_IPROBE", value)
             #TODO distinguish between Gemini 1 and 2
-        self._value = value
+        #self._value = value
         #print(getProbe(self._value, self.probe_table))
-# TODO:
+        print('Not implemented')
+
 class FieldOfView():
     def __init__(self) -> None:
         self._value = 0
@@ -230,7 +226,7 @@ class FieldOfView():
 
 # TODO: do not implement
 class IonBeam():
-    def __init__(self, sem: SEM_API) -> None:
+    def __init__(self, sem: Automation) -> None:
         self._is_blanked = True
         self._horizontal_field_width = FieldOfView()
         self.scanning = Scanning()
@@ -268,7 +264,7 @@ class IonBeam():
     def get_current(self):
         print('I was here')
         #current=self._sem.GetState("DP_FIB_PROBE")
-        string=self._sem.GetState("DP_FIB_IMAGE_PROBE")
+        #string=self._sem.GetState("DP_FIB_IMAGE_PROBE")
         current=string.split(':')[1]
         print(current)
         
@@ -311,7 +307,7 @@ class IonBeam():
 
 # TODO:
 class ElectronBeam():
-    def __init__(self, sem: SEM_API) -> None:
+    def __init__(self, sem: Automation) -> None:
         self._is_blanked = True
         self._horizontal_field_width = FieldOfView()
         self._scanning = Scanning()
@@ -325,12 +321,10 @@ class ElectronBeam():
         #self._beam_current.value = 500e-9
 
     def turn_on(self):
-        self._sem.Execute("CMD_BEAM_ON")
-        pass
+        self._sem.SEM.Beam.On()
 
     def turn_off(self):
-        self._sem.Execute("CMD_BEAM_OFF")
-        pass
+        self._sem.SEM.Beam.Off()
 
     @property
     def beam_current(self) -> BeamCurrent:
@@ -362,7 +356,7 @@ class ElectronBeam():
 
 
 class Beams():
-    def __init__(self, sem: SEM_API) -> None:
+    def __init__(self, sem: Automation) -> None:
         self.sem = sem
         self._beams = "Electon and Ion"
         self._electron_beam = ElectronBeam(sem)
@@ -397,19 +391,19 @@ class Beams():
 
 # TODO: do not implement
 class Patterning():
-    def __init__(self, sem: SEM_API) -> None:
+    def __init__(self, sem: Automation) -> None:
         self._sem = sem
         self._mode = "sequential"  # "parallel"
         self._state = "Idle"  # "Running"
 
     def stop(self):
-        pass
+        self._sem.DrawBeam.Stop()
 
     def start(self):
-        pass
+        self._sem.DrawBeam.Start()
 
     def clear_patterns(self):
-        pass
+        self._sem.DrawBeam.UnloadLayer()
 
     def set_default_beam_type(self):
         pass
@@ -419,12 +413,12 @@ class Patterning():
 
     def load_pattern(self, fname,testing=False):
         shutil.copyfile(fname, "C:/ProgramData/Carl Zeiss/SmartFIB/API/Drop/ApiLayout.ely")
-        self._sem.Execute("CMD_SMARTFIB_LOAD_ELY")    #r"C:\ProgramData\Carl Zeiss\SmartFIB\API\Drop\ApiLayout.ely"
+        #self._sem.Execute("CMD_SMARTFIB_LOAD_ELY")    #r"C:\ProgramData\Carl Zeiss\SmartFIB\API\Drop\ApiLayout.ely"
         time.sleep(1)
-        self._sem.Execute("CMD_SMARTFIB_PREPARE_EXPOSURE")
+        #self._sem.Execute("CMD_SMARTFIB_PREPARE_EXPOSURE")
         time.sleep(1)
-        self._sem.Execute("CMD_FIB_START_MILLING")
-        self._sem.SetState("DP_PATTERNING_MODE","FIB")
+        #self._sem.Execute("CMD_FIB_START_MILLING")
+        #self._sem.SetState("DP_PATTERNING_MODE","FIB")
         if testing:
             print('This is a test case for patterning as SerialFIB is run via a SmartSEM Simulation')
         else:
@@ -435,13 +429,7 @@ class Patterning():
     @property
     def is_idle(self):
         print('check idle')
-        if self._sem.GetState("DP_FIB_MODE")=="Milling":
-            #time.sleep(0.3)
-            idle=False
-        else:
-            idle=True
-            #time.sleep(0.3)
-        return idle
+        return self._sem.DrawBeam.GetStatus()[0] == self._sem.DrawBeam.Status.ProjectLoadedExpositionIdle
 
     @property
     def mode(self) -> str:
@@ -455,13 +443,14 @@ class Patterning():
     @property
     def state(self) -> str:
         """Get the patterning mode"""
-        self._state = self._sem.GetValue("DP_FIB_MODE")
-        return self._state
+        #self._state = self._sem.GetValue("DP_FIB_MODE")
+        #return self._state
 
     @state.setter
     def state(self, state) -> None:
-        success = self._sem.SetValue("DP_FIB_MODE", state)
-        self._state = state
+        #success = self._sem.SetValue("DP_FIB_MODE", state)
+        #self._state = state
+        print("Not Implemented")
 
 
 class GrabFrameSettings():
@@ -472,19 +461,20 @@ class GrabFrameSettings():
 
 
 class Imaging():
-    def __init__(self, sem: SEM_API) -> None:
+    def __init__(self, sem: Automation) -> None:
         self._sem = sem
         self.image_output=r'C:/api/Grab.tif'
+        self._active_view: int = 1
 
     def set_active_device(self):
         """setting imaging column (FIB mode ... SEM or FIB)"""
         pass
 
     def get_active_view(self) -> int:
-        return 1
+        return self._active_view
 
     def set_active_view(self, view: int):
-        pass
+        self._active_view = view
 
     def grab_frame(self, framesettings: GrabFrameSettings):
         """Grabbing a single full frame image"""
@@ -494,100 +484,104 @@ class Imaging():
         print(string1)
         resolution=string1[0]+' * '+string1[1]
         print(resolution)
-        self._sem.SetState('DP_IMAGE_STORE',resolution)
-        image = self._sem.grab_full_image(self.image_output)
+        #self._sem.SetState('DP_IMAGE_STORE',resolution)
+        #image = self._sem.grab_full_image(self.image_output)
 
-        return image
+        #return image
 
     def grab_multiple_frames(self, framesettings: GrabFrameSettings):
         """Grabbing images of all set channels"""
         images = []
         #images.append(self._sem.grab_full_image(r"D:/Images/RoSa/Images/test.tif"))
-        images.append(self._sem.grab_full_image(self.image_output))
+        #images.append(self._sem.grab_full_image(self.image_output))
         return images
 
     def set_contrast(self,value):
-        self._sem.SetValue("AP_CONTRAST", value)
+        #self._sem.SetValue("AP_CONTRAST", value)
         return
     def set_brightness(self,value):
-        self._sem.SetValue("AP_BRIGHTNESS", value)
+        #self._sem.SetValue("AP_BRIGHTNESS", value)
         return
     def set_field_width(self,value):
-        self._sem.Execute("CMD_UNFREEZE_ALL")
-        self._sem.SetValue("AP_WIDTH", value)
-        self._sem.Execute("CMD_FREEZE_ALL")
+        #self._sem.Execute("CMD_UNFREEZE_ALL")
+        #self._sem.SetValue("AP_WIDTH", value)
+        #self._sem.Execute("CMD_FREEZE_ALL")
         return
 
-# TODO: 2
 class Stage():
-    def __init__(self, sem: SEM_API) -> None:
+    def __init__(self, sem: Automation) -> None:
         self._sem = sem
-        self._current_position = self._sem.GetStagePosition()
         self._is_moving = False
-        self._sem.Set_Notify("DP_STAGE_IS")
-        self._sem.Add_Event(self._stage_move_inpect)
 
     def absolute_move_xy(self, stagepos: Tuple):
         self._is_moving = True
-        self._sem.move_stage_absolute_xy(stagepos[0], stagepos[1])
-        print(f"Moving stage x to {stagepos[0]} m and y to {stagepos[1]} m")
+        self._sem.Stage.StartMoveTo(stagepos[0], stagepos[1])
 
-        self._sem.wait_for_stage_idle() # use this when working with PyQt5
-        # while self._is_moving: sleep(0.5) is not working at the moment in combination with PyQt5
+        print(f"Moving stage x to {stagepos[0]} m and y to {stagepos[1]} m")
+        self._wait_for_stage_idle()
 
     def relative_move_xy(self, stagepos: Tuple):
         self._is_moving = True
-        self._sem.move_stage_relative_xy(stagepos[0], stagepos[1])
+        position = self.current_position
+        self._sem.Stage.StartMoveTo(position[0] + stagepos[0], position[1] + stagepos[1])
+
         print(f"Moving stage by {stagepos[0]} m in x and by {stagepos[1]} m in y direction.")
-        
-        self._sem.wait_for_stage_idle() # use this when working with PyQt5
-        # while self._is_moving: sleep(0.5) is not working at the moment in combination with PyQt5
+        self._wait_for_stage_idle()
     
     def absolute_move(self, stagepos: Tuple):
         self._is_moving = True
-        self._sem.move_stage_absolute(stagepos)
+        self._sem.Stage.StartMoveTo(*stagepos)
+        
         print(f"Moving stage x to {stagepos[0]} m and y to {stagepos[1]} m")
-
-        self._sem.wait_for_stage_idle() # use this when working with PyQt5
-        # while self._is_moving: sleep(0.5) is not working at the moment in combination with PyQt5
+        self._wait_for_stage_idle()
 
     def relative_move(self, stagepos: Tuple):
         self._is_moving = True
-        self._sem.move_stage_relative(stagepos)
-        print(f"Moving stage by {stagepos[0]} m in x and by {stagepos[1]} m in y direction.")
+
+        position = self.current_position
+        new_position = tuple(map(lambda x, y: x + y, position, stagepos))
+        self._sem.Stage.StartMoveTo(*new_position)
         
-        self._sem.wait_for_stage_idle() # use this when working with PyQt5
-        # while self._is_moving: sleep(0.5) is not working at the moment in combination with PyQt5
+        print(f"Moving stage by {stagepos[0]} m in x and by {stagepos[1]} m in y direction.")
+        self._wait_for_stage_idle()
 
     def _stage_move_inpect(self, *args):
         if args[0] == "DP_STAGE_IS" and args[3] == 0:
             self._is_moving = False
 
+    def _wait_for_stage_idle(self) -> None:
+        while self._sem.Stage.IsMoving():
+            time.sleep(0.1)
+            # PyQt5.QApplication().processEvents()
+        self._is_moving = False
+
     @property
     def current_position(self) -> Tuple:
-        self._current_position = self._sem.GetStagePosition()
+        self._current_position = self._sem.Stage.GetPosition()
         return self._current_position
 
 
-# TODO:
 class AutoFunctions():
-    def __init__(self, sem: SEM_API) -> None:
+    def __init__(self, sem: Automation) -> None:
         self._sem = sem
 
     def run_auto_cb(self):
-        self._sem.Execute("CMD_QUICK_BC")
-        time.sleep(0.5)
-        self._sem.Execute("CMD_QUICK_BC")
-        while self._sem.GetState("DP_AUTO_FUNCTION") != "Idle":
-            time.sleep(0.5) # use this when working with PyQt5
+        detector = self._sem.SEM.Detector.SESuitable()
+        self._sem.SEM.Detector.StartAutoSignal(detector)
+        self._wait_for_auto_complete()
+
     def run_auto_focus(self):
-        self._sem.Execute("CMD_AUTO_FOCUS_FINE")
-        while self._sem.GetState("DP_AUTO_FUNCTION") != "Idle": time.sleep(0.5) # use this when working with PyQt5
+        detector = self._sem.SEM.Detector.SESuitable()
+        self._sem.SEM.StartAutoWD(detector)
+        self._wait_for_auto_complete()
 
+    def _wait_for_auto_complete(self) -> None:
+        while self._sem.Stage.IsMoving():
+            time.sleep(0.1)
+            # PyQt5.QApplication().processEvents()
 
-# TODO: 2
 class Specimen():
-    def __init__(self, sem: SEM_API) -> None:
+    def __init__(self, sem: Automation) -> None:
         self._sem = sem
         self._stage = Stage(self._sem)
 
@@ -597,31 +591,28 @@ class Specimen():
         return self._stage
 
 
-# TODO: 1
 class MicroscopeClient():
     def __init__(self) -> None:
-        self._sem_api: SEM_API = None
-        self._beams: Beams = None
-        self._imaging: Imaging = None
-        self._specimen: Specimen = None
-        self._auto_functions: AutoFunctions = None
-        self._patterning: Patterning = None
+        print("Initialising microscope.")
 
     def connect(self):
-        self._sem_api = SEM_API()
-        self._beams = Beams(self._sem_api)
-        self._imaging = Imaging(self._sem_api)
-        self._specimen = Specimen(self._sem_api)
-        self._auto_functions = AutoFunctions(self._sem_api)
-        self._patterning = Patterning(self._sem_api)
+        print("Connecting microscope!")
+
+        microscope_ip = 'localhost'
+        self.session = Automation(microscope_ip)
+        #self._sem_api = SEM_API()
+        self._beams = Beams(self.session)
+        self._imaging = Imaging(self.session)
+        self._specimen = Specimen(self.session)
+        self._auto_functions = AutoFunctions(self.session)
+        self._patterning = Patterning(self.session)
 
         #probe_table_path = probeTable
 
-        print("Connecting microscope!")
-
+        
     def disconnect(self):
-        self._sem_api.close()
         print("Disconnecting microscope!")
+        self.session.Disconnect()
 
     @property
     def beams(self) -> Beams:

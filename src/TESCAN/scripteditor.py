@@ -211,7 +211,7 @@ with open('pickle.tmp','rb') as pickle_in:
     images=infile[1]
     patterns=infile[2]
 
-from src.Zeiss.CrossbeamDriver import fibsem
+from src.TESCAN.TescanDriver import fibsem
 
 import sys
 
@@ -231,7 +231,7 @@ fibsem=fibsem()
         #cmd='python tmp.py >_ && type _ && type _ > ScriptEditor.log'
         #cmd='python tmp.py > ScriptEditor.log & type ScriptEditor.log'
         #cmd='python '+'tmp.py >> ScriptEditor.log'
-        cmd='C:/Users/sem/.conda/envs/serialfib/python.exe tmp.py'
+        cmd='python tmp.py'
 
         #progressDialog = QtWidgets.QDialog()
         #verticalLayout = QtWidgets.QVBoxLayout(progressDialog)

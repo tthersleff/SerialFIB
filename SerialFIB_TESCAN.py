@@ -28,17 +28,7 @@
 ################################################################
 '''
 
-# Form implementation generated from reading ui file 'gui17.ui'
-#
-# Created by: PyQt5 UI code generator 5.6
-#
-# WARNING! All changes made in this file will be lost!
 
-# import sys
-# import warnings
-# warnings.simplefilter("ignore", UserWarning)
-# sys.coinit_flags = 2
-# #import pywinauto
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -46,10 +36,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 #               Function Import             #
 #############################################
 
-vendor='Zeiss'
+vendor='TESCAN'
 #### IMPORT AUTOSCRIPT STRUCTURES
 if vendor=='Zeiss':
     from src.Zeiss.CrossbeamDriver import fibsem, DummyAdorned
+
+if vendor=='TESCAN':
+    from src.TESCAN.TescanDriver import fibsem, DummyAdorned
 
 else:
     try:
@@ -61,11 +54,13 @@ else:
 
 ### IMPROT DRIVERS AND TOOLS
 
-from src.Zeiss.scripteditor import Ui_ScriptEditor
+from src.TESCAN.scripteditor import Ui_ScriptEditor
 from src.PatternDesigner import Ui_PatternFileEditor
 from src.LamellaDesigner import Ui_LamellaDesigner
 from src.VolumeDesigner import Ui_VolumeDesigner
 from src.Param3D import Param3D
+
+
 
 ### INITIALIZE MICROSCOPE FROM DRIVER
 scope=fibsem()
@@ -115,8 +110,8 @@ class Stream(QtCore.QObject):
 
 # TestImage load for developing
 try:
-    testimage=AdornedImage.load('./DummyImages/testimage1.tif')
-    testimage2=AdornedImage.load('./DummyImages/testimage2.tif')
+    testimage=DummyAdorned.load('./DummyImages/testimage1.tif')
+    testimage2=DummyAdorned.load('./DummyImages/testimage2.tif')
 except:
     print('No testcase or "wrong" developer computer')
 
@@ -698,7 +693,6 @@ class Ui_MainWindow(object):
         self.Button_RunRoughProtocol.pressed.connect(self.roughprotocol)
         self.Button_RunFineProtocol.pressed.connect(self.fineprotocol)
         self.Button_RunVolumeImaging.pressed.connect(self.volumeimaging)
-        self.Button_RunCustomProtocol.pressed.connect(self.trenchmill)
         self.Button_RunCustomProtocol.pressed.connect(self.customprotocol)
         self.Button_RunTrenchMilling.pressed.connect(self.trenchmill)
         self.Button_RunCustomPatternfile.pressed.connect(self.custompatternfilerun)
@@ -770,8 +764,7 @@ class Ui_MainWindow(object):
         self.actionTestbutton2.triggered.connect(self.align_to_item)
         self.actionTestbutton3.triggered.connect(self.set_alignment_current)
         self.actionTestbutton4.triggered.connect(self.write_patterns)
-        #self.actionTestbutton5.triggered.connect(self.testWidgets)
-        self.actionTestbutton5.triggered.connect(self.testPattern)
+        self.actionTestbutton5.triggered.connect(self.testWidgets)
 
 
 
@@ -780,9 +773,7 @@ class Ui_MainWindow(object):
     
         self.graphicsView.aspectRatioMode = QtCore.Qt.KeepAspectRatio
 
-    def testPattern(self):
-        scope.test_pattern(fname='D:/Sven/20240609_Test/Test1/0_out/0_trench_left.ptf')
-        return()
+
 
 ##################################
 # CODE:Button_take_image_IB      #
@@ -840,7 +831,7 @@ class Ui_MainWindow(object):
 
 
         ### Convert 16 bit image to 8 bit to show it in the GraphicsView
-        array8u=cv2.convertScaleAbs(array, alpha=(255.0/65535.0))
+        #array8u=cv2.convertScaleAbs(array, alpha=(255.0/65535.0))
         img_8bit=np.uint8(array)
         img_8bit = cv2.cvtColor(img_8bit,cv2.COLOR_BGR2GRAY)
         print(np.shape(img_8bit))
@@ -1418,6 +1409,16 @@ class Ui_MainWindow(object):
         return()
     
     def write_patterns(self):
+
+        from tescanautomation import Automation
+        from tescanautomation.DrawBeam import Layer
+        from tescanautomation.DrawBeam import IEtching
+        from tescanautomation.DrawBeam import ExpositionMeshAccuracy as DBAccuracy
+        from tescanautomation.DrawBeam import DepthUnit as DBDepthUnit
+        from tescanautomation.DrawBeam import ScanningPath
+        from tescanautomation.DrawBeam import Status as DBStatus
+
+
         directory=self.output_dir+'/'
         for i in range(0,self.tableWidget.rowCount()):
             #print(i)
@@ -1430,6 +1431,7 @@ class Ui_MainWindow(object):
             alignment_image_number=int(self.tableWidget.item(i,6).text())
             alignment_image=self.ImageBufferImages[alignment_image_number]
             pixel_size=alignment_image.metadata.binary_result.pixel_size.x
+            print(pixel_size)
             image_shape=np.shape(alignment_image.data)
 
             pattern_number=int(self.tableWidget.item(i,7).text())
@@ -1438,13 +1440,14 @@ class Ui_MainWindow(object):
                 continue
             else:
                 #try:
+                
                 patterns=self.pattern_dict[str(pattern_number)]
                 patterns=sorted(patterns, key=lambda pattern: pattern.y)
                 name_list=['tp','lamella','bp']
                 num=0
                 print(patterns)
                 for i in patterns:
-                    
+                    #print("I made it here")
                     pattern_filename=str(label)+'_'+str(name_list[num])+".ptf"
                     num=num+1
                     pos=i.pos()
@@ -1455,11 +1458,25 @@ class Ui_MainWindow(object):
                     #x=(pos.x()-image_shape[1]/2)+h/2
                     #y=-w/2-(pos.y()-image_shape[0]/2)
                     #try:
-                    x=(pos.x()-image_shape[1]/2)
-                    y=-(pos.y()-image_shape[0]/2)-w
-                    pattern=scope.create_pattern(x*pixel_size,y*pixel_size,w*pixel_size,h*pixel_size)
-                    print(pattern)
-                    scope.save_pattern(lamella_dir,pattern_filename,pattern)
+                    #x=(pos.x()-image_shape[1]/2)
+                    x=pos.x()
+                    #y=-(pos.y()-image_shape[0]/2)-w
+                    y=pos.y()
+                    print(x,y)
+                    #pattern=self.tescanScope.
+                    layerSettings = IEtching(False, 85e-6, 10e-9, 50e-9, 4.7e-10, 1e-6, DBAccuracy.Fine, 1, True)
+                    label1='Pattern'
+                    layer = Layer(label1, layerSettings)
+                    d=1e-06
+                    layer.addRectangleStairs(x, y, d, w, h, 0, DBDepthUnit.Meter, 1, 1, ScanningPath.ZigZag)
+
+                    #self.tescanScope.DrawBeam.LoadLayer(layer)
+                    #pattern=scope.create_pattern(x*pixel_size,y*pixel_size,w*pixel_size,h*pixel_size)
+                    print(i)
+                    print("I made it here")
+                    #scope.save_pattern(lamella_dir,pattern_filename,pattern)
+                    print(layer,file=open(lamella_dir+pattern_filename,'w'))
+                    #layer.toXml(lamella_dir+pattern_filename)
                         #except:
                             # print("Error in Pattern Writing: No Microscope connected?")
                             # #pattern=Pattern(0,0,0,0,0,'UP')
@@ -1720,7 +1737,6 @@ class Ui_MainWindow(object):
 
             scope.define_output_dir(self.output_dir)
             self.output_dir = directory
-            print(self.output_dir)
         except:
             print("Directory not valid!")
         return()
@@ -2040,7 +2056,7 @@ class Ui_MainWindow(object):
         self.threads.append(RoughProtocolThread())
         roughprotocol_thread=self.threads[self.number]
         self.number=self.number+1
-        scope.define_output_dir(self.output_dir+'/')
+        
         ### COMMENTED OUT FOR DEV ###
         try:
 
@@ -2083,69 +2099,6 @@ class Ui_MainWindow(object):
 
             self.progressDialog.close()
 
-            self.Signal_Done('Rough Mill stopped')
-        except:
-            print("Something went wrong with the setup.")
-            print(sys.exc_info())
-            
-            
-        #try:
-        #    ui.progressDialog.close()
-        #except:
-        self.progressDialog.close()
-        
-        return()
-
-
-    def customprotocol(self):
-        #self.trenchmill()
-        self.number
-        self.threads.append(CustomProtocolThread())
-        customprotocol_thread=self.threads[self.number]
-        self.number=self.number+1
-        scope.define_output_dir(self.output_dir+'/')
-        ### COMMENTED OUT FOR DEV ###
-        try:
-
-            self.progressDialog = QtWidgets.QDialog()
-            verticalLayout = QtWidgets.QVBoxLayout(self.progressDialog)
-            label = QtWidgets.QLabel("Running Rough Protocol",self.progressDialog)
-            verticalLayout.addWidget(label)
-            buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Cancel,self.progressDialog)
-
-            customprotocol_thread.__init__()
-            customprotocol_thread.start()
-            buttonBox.rejected.connect(self.progressDialog.reject)
-            verticalLayout.addWidget(buttonBox)
-            scope.continuerun = True
-            while customprotocol_thread.isRunning():
-                if self.progressDialog.exec() == QtWidgets.QDialog.Rejected:
-
-
-                    self.Signal_Done('Fine Milling stopped')
-                    #scope.stop_patterning()
-                    print("Fine Milling has been stopped")
-
-                #
-                    while customprotocol_thread.isRunning():
-
-                        #from autoscript_sdb_microscope_client.enumerations import PatterningState
-
-                        if scope.is_idle():
-                            continue
-                        else:
-                            scope.stop_patterning()
-
-                            scope.stop()
-                            scope.continuerun=False
-                            customprotocol_thread.continuerun=False
-                            customprotocol_thread.stop()
-                            self.progressDialog.close()
-
-                            print("Operation terminated")
-
-            self.progressDialog.close()
-            #ui.progressDialog.close()
             self.Signal_Done('Fine Mill stopped')
         except:
             print("Something went wrong with the setup.")
@@ -2153,14 +2106,11 @@ class Ui_MainWindow(object):
         self.progressDialog.close()
         return()
 
-
-
     def fineprotocol(self):
         self.number
         self.threads.append(FineProtocolThread())
         fineprotocol_thread=self.threads[self.number]
         self.number=self.number+1
-        scope.define_output_dir(self.output_dir+'/')
         try:
 
             self.progressDialog = QtWidgets.QDialog()
@@ -2184,7 +2134,7 @@ class Ui_MainWindow(object):
 
                     while fineprotocol_thread.isRunning():
 
-                        #from autoscript_sdb_microscope_client.enumerations import PatterningState
+                        from autoscript_sdb_microscope_client.enumerations import PatterningState
 
                         if scope.is_idle():
                             continue
@@ -2213,7 +2163,6 @@ class Ui_MainWindow(object):
         self.threads.append(TrenchMillThread())
         trenchmill_thread=self.threads[self.number]
         self.number=self.number+1
-        scope.define_output_dir(self.output_dir+'/')
         try:
 
             self.progressDialog = QtWidgets.QDialog()
@@ -2236,96 +2185,91 @@ class Ui_MainWindow(object):
                     print("Trench Milling has been stopped")
 
 
-                    #while trenchmill_thread.isRunning():
+                    while trenchmill_thread.isRunning():
 
-                        #from autoscript_sdb_microscope_client.enumerations import PatterningState
+                        from autoscript_sdb_microscope_client.enumerations import PatterningState
 
-                    if scope.is_idle():
-                        continue
-                    else:
-                        scope.stop_patterning()
+                        if scope.is_idle():
+                            continue
+                        else:
+                            scope.stop_patterning()
 
-                        scope.stop()
-                        scope.continuerun=False
-                        trenchmill_thread.continuerun=False
-                        trenchmill_thread.stop()
-                        self.progressDialog.close()
+                            scope.stop()
+                            scope.continuerun=False
+                            trenchmill_thread.continuerun=False
 
-                        print("Operation terminated")
+                            self.progressDialog.close()
 
-            #self.progressDialog.close()
-            #ui.progressDialog.close()
+                            print("Operation terminated")
+
+            self.progressDialog.close()
+
             self.Signal_Done('Trench Mill stopped')
         except:
             print("Something went wrong with the setup.")
             print(sys.exc_info())
-            #ui.progressDialog.close()
-        #try:
-        #    ui.progressDialog.close()
-        #except:
         self.progressDialog.close()
         #self.runRoughMill2_Done('Rough Mill stopped')
         return()
 
 
-    # def customprotocol(self):
-    #     self.number
-    #     self.threads.append(CustomProtocolThread())
-    #     customprotocol_thread=self.threads[self.number]
-    #     self.number=self.number+1
-    #     try:
+    def customprotocol(self):
+        self.number
+        self.threads.append(CustomProtocolThread())
+        customprotocol_thread=self.threads[self.number]
+        self.number=self.number+1
+        try:
 
-    #         self.progressDialog = QtWidgets.QDialog()
-    #         verticalLayout = QtWidgets.QVBoxLayout(self.progressDialog)
-    #         label = QtWidgets.QLabel("Running Custom Protocol",self.progressDialog)
-    #         verticalLayout.addWidget(label)
-    #         buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Cancel,self.progressDialog)
+            self.progressDialog = QtWidgets.QDialog()
+            verticalLayout = QtWidgets.QVBoxLayout(self.progressDialog)
+            label = QtWidgets.QLabel("Running Custom Protocol",self.progressDialog)
+            verticalLayout.addWidget(label)
+            buttonBox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Cancel,self.progressDialog)
 
-    #         customprotocol_thread.__init__()
-    #         customprotocol_thread.start()
-    #         buttonBox.rejected.connect(self.progressDialog.reject)
-    #         verticalLayout.addWidget(buttonBox)
-    #         scope.continuerun = True
-    #         while customprotocol_thread.isRunning():
-    #             if self.progressDialog.exec() == QtWidgets.QDialog.Rejected:
+            customprotocol_thread.__init__()
+            customprotocol_thread.start()
+            buttonBox.rejected.connect(self.progressDialog.reject)
+            verticalLayout.addWidget(buttonBox)
+            scope.continuerun = True
+            while customprotocol_thread.isRunning():
+                if self.progressDialog.exec() == QtWidgets.QDialog.Rejected:
 
-    #                 self.Signal_Done('Custom Protocol stopped')
+                    self.Signal_Done('Custom Protocol stopped')
 
-    #                 print("Custom Protocol has been stopped")
+                    print("Custom Protocol has been stopped")
 
 
-    #                 while customprotocol_thread.isRunning():
+                    while customprotocol_thread.isRunning():
 
-    #                     from autoscript_sdb_microscope_client.enumerations import PatterningState
+                        from autoscript_sdb_microscope_client.enumerations import PatterningState
 
-    #                     if scope.is_idle():
-    #                         continue
-    #                     else:
-    #                         scope.stop_patterning()
+                        if scope.is_idle():
+                            continue
+                        else:
+                            scope.stop_patterning()
 
-    #                         scope.stop()
-    #                         scope.continuerun=False
-    #                         customprotocol_thread.continuerun=False
-    #                         customprotocol_thread.stop()
+                            scope.stop()
+                            scope.continuerun=False
+                            customprotocol_thread.continuerun=False
+                            customprotocol_thread.stop()
 
-    #                         self.progressDialog.close()
+                            self.progressDialog.close()
 
-    #                         print("Operation terminated")
+                            print("Operation terminated")
 
-    #         self.progressDialog.close()
+            self.progressDialog.close()
 
-    #         self.Signal_Done('Custom Protocol stopped')
-    #     except:
-    #         print("Something went wrong with the setup.")
-    #         print(sys.exc_info())
-    #     self.progressDialog.close()
+            self.Signal_Done('Custom Protocol stopped')
+        except:
+            print("Something went wrong with the setup.")
+            print(sys.exc_info())
+        self.progressDialog.close()
 
-    #     return()
+        return()
 
     def volumeimaging(self):
-        
         try:
-            scope.define_output_dir(self.output_dir+'/')
+
             self.progressDialog = QtWidgets.QDialog()
             verticalLayout = QtWidgets.QVBoxLayout(self.progressDialog)
             label = QtWidgets.QLabel("Running Volume Imaging",self.progressDialog)
@@ -2349,7 +2293,7 @@ class Ui_MainWindow(object):
 
                     while volumeimaging_thread.isRunning():
 
-                        #from autoscript_sdb_microscope_client.enumerations import PatterningState
+                        from autoscript_sdb_microscope_client.enumerations import PatterningState
 
                         if scope.is_idle():
                             continue
@@ -2401,7 +2345,7 @@ class Ui_MainWindow(object):
 
                     while custompatternfile_thread.isRunning():
 
-                        #from autoscript_sdb_microscope_client.enumerations import PatterningState
+                        from autoscript_sdb_microscope_client.enumerations import PatterningState
 
                         if scope.is_idle():
                             continue
@@ -2914,13 +2858,11 @@ class TrenchMillThread(QtCore.QThread):
 
                 ui.sysout.write(ui.log_out)
 
-            self.signal.emit("Trench Mill done!")
-            ui.progressDialog.close()
+            self.signal.emit("Rough Mill done!")
+
         except:
             print("Something went wrong. Most likely, your output directory is not valid!")
             print(sys.exc_info())
-
-            ui.progressDialog.close()
 
 
 
@@ -2973,7 +2915,7 @@ class RoughProtocolThread(QtCore.QThread):
                     ui.sysout.write(ui.log_out)
 
             self.signal.emit("Rough Protocol done!")
-            #self.progressDalog.close()
+
             ui.progressDialog.close()
 
         except:
