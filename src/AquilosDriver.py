@@ -41,7 +41,7 @@ try:
     import autoscript_toolkit.vision as vision_toolkit
     from src.custom_matchers_v3 import *
 except:
-    print("No Autoscript installed")
+    print("No Autoscript installed from AquilosDriver.py")
 
 
 from src.read_SAV import read_SAV_params
